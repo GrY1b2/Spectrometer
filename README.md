@@ -1,2 +1,2 @@
-# spectrometer
+# Spectrometer
 DIY Spectrometer
