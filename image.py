@@ -23,9 +23,9 @@ def getSubImage(pt1, pt2):
     """
 
     frame = getImage()
-    analyze_frame = frame[slice(analyze_bbox[0][1], analyze_bbox[1][1]), slice(analyze_bbox[0][0], analyze_bbox[1][0])]
+    analyze_frame = frame[]
 
-    return frame
+    return analyze_frame
 
 
 
@@ -34,3 +34,7 @@ def closeCamera():
     CAM.release()
     cv2.destroyAllWindows()
 
+
+
+
+getImage((12,12), (12,12))
