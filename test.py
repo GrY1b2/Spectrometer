@@ -4,7 +4,7 @@ import image
 import cv2
 
 
-frame = image.getImage()
+frame = image.getImage((20,30),(200,400))
 
 cv2.imshow("test", frame)
 
