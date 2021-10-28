@@ -2,13 +2,12 @@
 
 import cv2
 
-CAM = cv2.VideoCapture(0)
 
-def getImage(p1=None, p2=None):
+def getImage(videoObj, p1=None, p2=None):
     """
     Returns the image with drawn rectangle on top given by pt1 and pt2
     """
-    ret, frame = CAM.read()
+    ret, frame = videoObj.read()
     if not ret:
         print("failed to grab frame")
         return None
@@ -18,12 +17,12 @@ def getImage(p1=None, p2=None):
     
     return frame
 
-def getSubImage(p1, p2):
+def getSubImage(videoObj, p1, p2):
     """"
     Returns the part of the capture enclosed by pt1 and pt2.
     """
 
-    frame = getImage()
+    frame = getImage(videoObj)
     analyze_frame = frame[p1[1]:p2[1], p1[0]:p2[0]]
 
     return analyze_frame
