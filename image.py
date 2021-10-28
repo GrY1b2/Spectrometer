@@ -28,9 +28,7 @@ def getSubImage(videoObj, p1, p2):
     return analyze_frame
 
 
-
-
-def closeCamera():
-    CAM.release()
+def closeCamera(videoObj):
+    videoObj.release()
     cv2.destroyAllWindows()
 
