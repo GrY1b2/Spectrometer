@@ -69,33 +69,38 @@ class videoROI(Thread):
 if __name__ == "__main__":
     video = videoROI(0)
     video.start()
-    # while True:
-    #     if video.getImage() is not None:
-    #         print(video.getImage().shape)
-    #     time.sleep(1)
-
     clim=(350,780)
     norm = plt.Normalize(*clim)
     wl = np.arange(clim[0],clim[1]+1,2)
     colorlist = list(zip(norm(wl),[analyze.wavelength_to_rgb(w) for w in wl]))
     spectralmap = matplotlib.colors.LinearSegmentedColormap.from_list("spectrum", colorlist)
-
     fig, axs = plt.subplots(1, 1, figsize=(8,4), tight_layout=True)
-
-    wavelengths = np.linspace(200, 1000, 1000)
-    spectrum = (5 + np.sin(wavelengths*0.1)**2) * np.exp(-0.00002*(wavelengths-600)**2)
-    plt.plot(wavelengths, spectrum, color='darkred')
-
+    wavelengths = np.linspace(200, 1000, 801)       # X-axis
+    spectrum = (np.sin(wavelengths*0.05) +5)
+    graph = plt.plot(wavelengths, spectrum, color='darkred')[0]
     y = np.linspace(0, 6, 100)
     X,Y = np.meshgrid(wavelengths, y)
-
     extent=(np.min(wavelengths), np.max(wavelengths), np.min(y), np.max(y))
-
-    plt.imshow(X, clim=clim,  extent=extent, cmap=spectralmap, aspect='auto')
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Intensity')
-
-    plt.fill_between(wavelengths, spectrum, 8, color='w')
     plt.savefig('WavelengthColors.png', dpi=200)
+    plt.ion()
+    
+    
+    
+    # Mainloop
+    i = 0
+    while True:
+        i += 1
+        print("in here")
+        spectrum = (np.sin(wavelengths*i/100) +5)
+        if i == 100:
+            i = 0
 
-    plt.show()
+
+        plt.clf()
+        plt.imshow(X, clim=clim,  extent=extent, cmap=spectralmap, aspect='auto')
+        plt.fill_between(wavelengths, spectrum, 8, color='w')
+        graph.set_ydata(spectrum)
+        plt.draw()
+        plt.pause(1)

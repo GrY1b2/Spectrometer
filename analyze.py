@@ -52,3 +52,14 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
         G = 0.0
         B = 0.0
     return (R, G, B, A)
+
+
+
+def getImageColor(frame):
+
+    h, w, _ = frame.shape
+
+    for i in range(h):
+        for j in range(w):
+            color = frame[i,j]
+
