@@ -67,8 +67,8 @@ class videoROI(Thread):
 
         
 if __name__ == "__main__":
-    #video = videoROI(0)
-    #video.start()
+    video = videoROI(0)
+    video.start()
     clim=(350,780)
     norm = plt.Normalize(*clim)
     wl = np.arange(clim[0],clim[1]+1,2)
@@ -96,6 +96,9 @@ if __name__ == "__main__":
         spectrum = (np.sin(wavelengths*i/100) +5)
         if i == 100:
             i = 0
+
+        
+        
 
 
         plt.clf()
