@@ -55,10 +55,10 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
 
 
 
-def getImageColor(frame):
-
-    h, w, _ = frame.shape
-
-    for col in frame:
-        print(col)
+def normalizePixelColor(frame, clim=(380,750)):
+    frame = frame.astype("float32")
+    frame /= 255.0
+    
+    
+    return frame
 

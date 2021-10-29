@@ -69,7 +69,7 @@ class videoROI(Thread):
 if __name__ == "__main__":
     video = videoROI(0)
     video.start()
-    clim=(350,780)
+    clim=(380,750)
     norm = plt.Normalize(*clim)
     wl = np.arange(clim[0],clim[1]+1,2)
     colorlist = list(zip(norm(wl),[analyze.wavelength_to_rgb(w) for w in wl]))
