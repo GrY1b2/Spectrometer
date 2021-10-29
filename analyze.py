@@ -59,7 +59,6 @@ def getImageColor(frame):
 
     h, w, _ = frame.shape
 
-    for i in range(h):
-        for j in range(w):
-            color = frame[i,j]
+    for col in frame:
+        print(col)
 
