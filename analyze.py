@@ -55,10 +55,10 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
 
 
 
-def normalizePixelColor(frame, clim=(380,750)):
+def normalizeRGB(frame):
     frame = frame.astype("float32")
     frame /= 255.0
-    
-    
     return frame
+
+
 
