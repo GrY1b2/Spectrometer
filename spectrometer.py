@@ -25,6 +25,8 @@ class videoROI(Thread):
     def run(self, *args, **kwargs):
 
         self.capture = cv2.VideoCapture(self.src)
+        self.capture.set(3, 64)
+        self.capture.set(4, 64)
         cv2.namedWindow(self.windowName, cv2.WINDOW_NORMAL)
 
         while self.capture.isOpened():
@@ -73,11 +75,21 @@ class videoROI(Thread):
 if __name__ == "__main__":
     clim = (380, 750)
 
-    wavelengths = np.arange(clim[0],clim[1]+1,1)
+    wavelengths = np.arange(clim[0],clim[1]+1,2)
     tally = dict(zip(wavelengths, np.zeros(len(wavelengths), dtype="int")))
     wlRGB = np.array([analyze.wavelength_to_rgb(wl) for wl in wavelengths])
     wlRGB *= 255.0
     norm_wlRGB = wlRGB.astype("int")
+
+    # norm = plt.Normalize(*clim)
+    # colorlist = list(zip(norm(wavelengths),[analyze.wavelength_to_rgb(w) for w in wavelengths]))
+    # spectralmap = matplotlib.colors.LinearSegmentedColormap.from_list("spectrum", colorlist)
+    # fig, axs = plt.subplots(1, 1, figsize=(8,4), tight_layout=True)
+    graph = plt.plot(tally.keys(), tally.values(), color='darkred')[0]
+    plt.ylim(0, 50)
+    plt.xlabel('Wavelength (nm)')
+    plt.ylabel('Intensity')
+    plt.ion()
 
     video = videoROI(0)
     video.start()
@@ -89,15 +101,18 @@ if __name__ == "__main__":
 
             newframe = np.reshape(frame, (frame.shape[0] * frame.shape[1], 3))
             for col in newframe:
+                if all(np.flip(col) < np.array([30,30,30])) or all(np.flip(col) > np.array([100,100,100])):
+                    continue
                 prevdiff = (10000000, 0)
                 for i, wlCol in enumerate(norm_wlRGB):
                     diff = np.linalg.norm(np.flip(col)-wlCol[:-1])
                     if diff < prevdiff[0]:
                         prevdiff = (diff, i)
                 tally[wavelengths[prevdiff[1]]] += 1
-                
-            print(frame)
-            print(tally)
+
+            graph.set_ydata(list(tally.values()))
+            plt.draw()
+            plt.pause(0.1)
             tally = dict.fromkeys(tally, 0)
         cv2.waitKey(10)
 
@@ -105,21 +120,9 @@ if __name__ == "__main__":
 
 
     # clim=(380,750)
-    # norm = plt.Normalize(*clim)
+    
     # wl = np.arange(clim[0],clim[1]+1,2)
-    # colorlist = list(zip(norm(wl),[analyze.wavelength_to_rgb(w) for w in wl]))
-    # spectralmap = matplotlib.colors.LinearSegmentedColormap.from_list("spectrum", colorlist)
-    # fig, axs = plt.subplots(1, 1, figsize=(8,4), tight_layout=True)
-    # wavelengths = np.linspace(200, 1000, 801)       # X-axis
-    # spectrum = (np.sin(wavelengths*0.05) +5)
-    # graph = plt.plot(wavelengths, spectrum, color='darkred')[0]
-    # y = np.linspace(0, 6, 100)
-    # X,Y = np.meshgrid(wavelengths, y)
-    # extent=(np.min(wavelengths), np.max(wavelengths), np.min(y), np.max(y))
-    # plt.xlabel('Wavelength (nm)')
-    # plt.ylabel('Intensity')
-    # plt.savefig('WavelengthColors.png', dpi=200)
-    # plt.ion()
+
     
     
     
