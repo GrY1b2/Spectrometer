@@ -2,9 +2,7 @@
 
 import cv2
 import matplotlib.pyplot as plt
-import matplotlib.colors
 import image
-import time
 import numpy as np
 from threading import Thread
 import analyze
@@ -13,7 +11,7 @@ import analyze
 class videoROI(Thread):
     def __init__(self, src):
         super().__init__()
-        self.bbox = [None, None]        # In format [pos1, pos2] : List[Tuple, Tuple]
+        self.bbox = [None, None]
         self.windowName = "image"
         self.frame = None
         self.src = src
@@ -25,8 +23,8 @@ class videoROI(Thread):
     def run(self, *args, **kwargs):
 
         self.capture = cv2.VideoCapture(self.src)
-        self.capture.set(3, 64)
-        self.capture.set(4, 64)
+        self.capture.set(3, 128)
+        self.capture.set(4, 128)
         cv2.namedWindow(self.windowName, cv2.WINDOW_NORMAL)
 
         while self.capture.isOpened():
@@ -37,7 +35,7 @@ class videoROI(Thread):
             cv2.imshow(self.windowName, self.frame)
             k = cv2.waitKey(1)
 
-            if k == ord('c'):     # Draw rectangle
+            if k == ord('c'):
                 self.bbox = [None, None]
                 cv2.setMouseCallback(self.windowName, self.mouseCB, param=0)
                 while not all(self.bbox):
@@ -45,6 +43,9 @@ class videoROI(Thread):
 
             elif k == ord('q'):
                 break
+                
+            elif k == ord('s'):
+                cv2.imwrite("frame.png", self.frame)
 
         else:
             print("capture closed")
@@ -64,13 +65,12 @@ class videoROI(Thread):
 
     def getImage(self):
         try:
-            if all(self.bbox):
+            if self.selected:
                 return image.getSubImage(self.capture, *self.bbox)
             else:
                 return image.getImage(self.capture, *self.bbox)
         except AttributeError:
             return None
-
         
 if __name__ == "__main__":
     clim = (380, 750)
@@ -81,17 +81,13 @@ if __name__ == "__main__":
     wlRGB *= 255.0
     norm_wlRGB = wlRGB.astype("int")
 
-    # norm = plt.Normalize(*clim)
-    # colorlist = list(zip(norm(wavelengths),[analyze.wavelength_to_rgb(w) for w in wavelengths]))
-    # spectralmap = matplotlib.colors.LinearSegmentedColormap.from_list("spectrum", colorlist)
-    # fig, axs = plt.subplots(1, 1, figsize=(8,4), tight_layout=True)
     graph = plt.plot(tally.keys(), tally.values(), color='darkred')[0]
     plt.ylim(0, 50)
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Intensity')
     plt.ion()
 
-    video = videoROI(0)
+    video = videoROI(1)
     video.start()
 
     while True:
@@ -100,44 +96,25 @@ if __name__ == "__main__":
             frame = video.getImage()
 
             newframe = np.reshape(frame, (frame.shape[0] * frame.shape[1], 3))
-            for col in newframe:
-                if all(np.flip(col) < np.array([30,30,30])) or all(np.flip(col) > np.array([100,100,100])):
-                    continue
-                prevdiff = (10000000, 0)
-                for i, wlCol in enumerate(norm_wlRGB):
-                    diff = np.linalg.norm(np.flip(col)-wlCol[:-1])
-                    if diff < prevdiff[0]:
-                        prevdiff = (diff, i)
-                tally[wavelengths[prevdiff[1]]] += 1
+            for row in frame:
+                for col in row:
+                    flip = np.flip(col)
+                    if all(flip < np.array([50,50,50])) or all(flip > np.array([100,100,100])):
+                        continue
+                    prevdiff = (10000000, 0)
+                    for i, wlCol in enumerate(norm_wlRGB):
+                        diff = np.sum(np.square(flip - wlCol[:-1]))
+                        if diff < prevdiff[0]:
+                            prevdiff = (diff, i)
+                    tally[wavelengths[prevdiff[1]]] += 1
 
-            graph.set_ydata(list(tally.values()))
+            tally[wavelengths[0]] = 0
+            tally[wavelengths[-1]] = 0
+            yData = list(tally.values())
+            graph.set_ydata(yData)
+            plt.ylim(0, max(yData) + 2)
             plt.draw()
-            plt.pause(0.1)
+            plt.pause(0.01)
+            cv2.waitKey(1)
             tally = dict.fromkeys(tally, 0)
-        cv2.waitKey(10)
-
-
-
-
-    # clim=(380,750)
-    
-    # wl = np.arange(clim[0],clim[1]+1,2)
-
-    
-    
-    
-    # # Mainloop
-    # i = 0
-    # while True:
-    #     i += 1
-    #     print("in here")
-    #     spectrum = (np.sin(wavelengths*i/100) +5)
-    #     if i == 100:
-    #         i = 0
-    #     plt.clf()
-    #     plt.imshow(X, clim=clim,  extent=extent, cmap=spectralmap, aspect='auto')
-    #     plt.fill_between(wavelengths, spectrum, 8, color='w')
-    #     graph.set_ydata(spectrum)
-    #     plt.draw()
-    #     plt.pause(0.1)
-
+        
