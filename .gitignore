@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Testing files
+test.py
+
 # Configurations
 .vscode
 .idea
