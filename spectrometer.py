@@ -103,7 +103,7 @@ if __name__ == "__main__":
                         continue
                     prevdiff = (10000000, 0)
                     for i, wlCol in enumerate(norm_wlRGB):
-                        diff = np.sum(np.square(flip - wlCol[:-1]))
+                        diff = np.sum(np.square(flip - wlCol[:-1]))     # Size of color vector without sqrt() operation.
                         if diff < prevdiff[0]:
                             prevdiff = (diff, i)
                     tally[wavelengths[prevdiff[1]]] += 1
