@@ -2,7 +2,6 @@
 
 import cv2
 
-
 def getImage(videoObj, p1=None, p2=None):
     """
     Returns the image with drawn rectangle on top given by pt1 and pt2
@@ -21,7 +20,6 @@ def getSubImage(videoObj, p1, p2):
     """"
     Returns the part of the capture enclosed by pt1 and pt2.
     """
-
     frame = getImage(videoObj)
     analyze_frame = frame[p1[1]:p2[1], p1[0]:p2[0]]
 

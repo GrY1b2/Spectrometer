@@ -2,7 +2,8 @@
 
 
 def wavelength_to_rgb(wavelength, gamma=0.8):
-    ''' taken from http://www.noah.org/wiki/Wavelength_to_RGB_in_Python
+    """
+    Taken from http://www.noah.org/wiki/Wavelength_to_RGB_in_Python
     This converts a given wavelength of light to an
     approximate RGB color value. The wavelength must be given
     in nanometers in the range from 380 nm through 750 nm
@@ -11,7 +12,9 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
     Based on code by Dan Bruton
     http://www.physics.sfasu.edu/astro/color/spectra.html
     Additionally alpha value set to 0.5 outside range
-    '''
+
+    Standard function used in the field.
+    """
     wavelength = float(wavelength)
     if wavelength >= 380 and wavelength <= 750:
         A = 1.
