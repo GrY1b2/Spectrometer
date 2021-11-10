@@ -31,8 +31,8 @@ class videoROI(Thread):
         self.capture = cv2.VideoCapture(self.src)       # src = 0: built in webcam, src = 1: additional webcam
 
         # Set a lower resolution to quicken computation.
-        self.capture.set(3, 128)
-        self.capture.set(4, 128)
+        self.capture.set(3, 256)
+        self.capture.set(4, 256)
 
         cv2.namedWindow(self.windowName, cv2.WINDOW_NORMAL)
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     clim = (380, 750)
 
     # Arrange wavelength array
-    wavelengths = np.arange(clim[0],clim[1]+1,2)
+    wavelengths = np.arange(clim[0],clim[1]+1,3)
 
     # Dictionary to count pixels with the wavelength as the key
     tally = dict(zip(wavelengths, np.zeros(len(wavelengths), dtype="int")))
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     plt.ion()
 
     # Start video feed
-    video = videoROI(0)
+    video = videoROI(1)
     video.start()
 
     # main loop
@@ -133,7 +133,7 @@ if __name__ == "__main__":
                     flip = np.flip(col)
 
                     # If the pixel is very dim or includes lots of light of all colors, ignore it
-                    if all(flip < np.array([50,50,50])) or all(flip > np.array([200,200,200])):
+                    if all(flip < np.array([50,50,50])) or all(flip > np.array([100,100,100])):
                         continue
 
                     # Iterate through every wavelength (R, G, B) value
@@ -145,7 +145,10 @@ if __name__ == "__main__":
                         diff = np.sum(np.square(flip - wlCol[:-1]))     # magnitude of color vector without sqrt() operation.
                         if diff < prevdiff[0]:
                             prevdiff = (diff, i)
-                    tally[wavelengths[prevdiff[1]]] += 1
+                    try:
+                        tally[wavelengths[prevdiff[1]]] += 1
+                    except:
+                        pass
 
             # Remove extremes. This will mostly contain noise
             tally[wavelengths[0]] = 0
