@@ -9,20 +9,17 @@ import matplotlib.pyplot as plt
 import image
 import numpy as np
 from threading import Thread
-import analyze
+import time
 
 # Class to keep a static ROI over video
 class videoROI(Thread):
-    def __init__(self, src):
+    def __init__(self, src, topleft, bottomright):
         super().__init__()
-        self.bbox = [None, None]        # Bounding box for rectangle, (topleft, bottomright)
-        self.windowName = "image"
-        self.frame = None
+        self.bbox = [topleft, bottomright]        # Bounding box for rectangle, (topleft, bottomright)
+        self.windowName = "Video"
+        self._frame = None
         self.src = src
-    
-    @property
-    def selected(self):
-        return all(self.bbox)
+        self.scale = 2                            # Scale to increase the image resolution of when displaying
     
     def run(self, *args, **kwargs):
         """
@@ -30,137 +27,129 @@ class videoROI(Thread):
         """
         self.capture = cv2.VideoCapture(self.src)       # src = 0: built in webcam, src = 1: additional webcam
 
-        # Set a lower resolution to quicken computation.
-        self.capture.set(3, 256)
-        self.capture.set(4, 256)
-
-        cv2.namedWindow(self.windowName, cv2.WINDOW_NORMAL)
+        cv2.namedWindow(self.windowName)
 
         while self.capture.isOpened():
 
-            # Show a video feed of the camera
-            self.frame = image.getImage(self.capture, *self.bbox)
-            cv2.imshow(self.windowName, self.frame)
+            # Capture image for video feed 
+            self._frame = image.getImage(self.capture, *self.bbox)
+
+            # Sometimes async errors causes frame to be None
+            if self._frame is None:
+                cv2.waitKey(1)
+                continue
+            
+            # Increase the resolution/size of the shown video feed to fit laptop display better
+            show_frame = cv2.resize(self._frame, (640*self.scale, 480*self.scale))
+            cv2.imshow(self.windowName, show_frame)
+            
             k = cv2.waitKey(1)
 
             # User input
-            # 'c': Select an ROI
+            # 'p': print the coordinates of the mouse
             # 'q': quit
             # 's': save current image
-            if k == ord('c'):
-                self.bbox = [None, None]
-
-                # Wait until both positions are selected until continuing the video feed.
+            if k == ord('p'):
                 cv2.setMouseCallback(self.windowName, self.mouseCB, param=0)
-                while not all(self.bbox):
-                    k = cv2.waitKey(1)
-
             elif k == ord('q'):
                 break
             elif k == ord('s'):
-                cv2.imwrite("frame.png", self.frame)
+                cv2.imwrite("frame.png", self._frame)
         else:
             print("capture closed")
 
     def mouseCB(self, event, x, y, flags, param):
         """
         Mouse event callback
-        param is an integer representing the bounding box position index
+        Print the coordinates of the mouse once.
         """
-        if param == 0 and event == cv2.EVENT_LBUTTONDOWN:
-            # First bbox index
-            self.bbox[param] = (x,y)
-            cv2.setMouseCallback(self.windowName, self.mouseCB, param=1)
-        elif param == 1 and event == cv2.EVENT_LBUTTONDOWN:
-            # Second bbox index, disregard next mouse event by setting callback to an anonymous function
-            self.bbox[param] = (x,y)
-            cv2.setMouseCallback(self.windowName, lambda *args : None)
-        elif param == 1:
-            # Live update ROI rectangle
-            newframe = self.frame.copy()
-            cv2.rectangle(newframe, self.bbox[0], (x,y), (0,255,0))
-            cv2.imshow("image", newframe)
+        print("Pos: {}, {}".format(x/self.scale,y/self.scale))
+
+        # Set next callback to anonymous function returning None
+        cv2.setMouseCallback(self.windowName, lambda *args : None)
 
     def getImage(self):
         """
-        Get current image (or ROI if selected)
+        Get current ROI
         """
-        try:
-            if self.selected:
-                return image.getSubImage(self.capture, *self.bbox)
-            else:
-                return image.getImage(self.capture, *self.bbox)
-        except AttributeError:
-            return None
+        return image.getSubImage(self.capture, *self.bbox)
+
+    def close(self):
+        """
+        Close the camera
+        """
+        image.closeCamera(self.capture)
         
 
 if __name__ == "__main__":
-    # Visible color (lower, upper) limit
-    clim = (380, 750)
+    
+    # Analyze 2 lines of spectrum at height 300. 
+    pixelY = 300
+    height = 2
 
-    # Arrange wavelength array
-    wavelengths = np.arange(clim[0],clim[1]+1,3)
+    # Calibration constants
+    calibWL = 532       # Calibrated to prefectly match green laser
+    calibPixelX = 189   # Green laser x value on detector
+    minWL = 300         # Minimum wavelength to be graphed
+    maxWL = 800         # Max wavelength to be graphed
+    scaleFactor = 2.6   # Calculated resolution (wavelengths per pixel) with other known lasers with green laser being zero
 
-    # Dictionary to count pixels with the wavelength as the key
-    tally = dict(zip(wavelengths, np.zeros(len(wavelengths), dtype="int")))
+    # Arange wavelength array
+    calibToMax = np.arange(calibWL, maxWL, scaleFactor)
+    calibToMin = np.flip(np.arange(calibWL, minWL, -scaleFactor))
+    wavelengths = np.concatenate((calibToMin, calibToMax))
 
-    # Wavelength array in RGB-value, normalized to a value between 0 and 255
-    wlRGB = np.array([analyze.wavelength_to_rgb(wl) for wl in wavelengths])
-    wlRGB *= 255.0
-    norm_wlRGB = wlRGB.astype("int")
+    # Determine the x interval of interest in detector
+    minPixelX = calibPixelX - len(calibToMin) + 1
+    maxPixelX = minPixelX + len(wavelengths)
 
-    # Plot to plot the wavelengths on the x-axis and # of pixels on the y axis. the number of pixels of each wavelengths will represent the intensity.
-    graph = plt.plot(tally.keys(), tally.values(), color='darkred')[0]
-    plt.ylim(0, 50)
+    # Dictionary to count intensity of each pixel/corresponding wavelength
+    intensities = dict(zip(wavelengths, np.zeros(len(wavelengths), dtype="int")))
+
+    # Graph to plot the wavelengths on the x-axis and intensity of pixel/wavelength on the y-axis. 
+    # Pixels can have a max intensity of 585000 given by square of the sum of 8-bit color value. 
+    graph = plt.plot(intensities.keys(), intensities.values(), color='darkred')[0]
+    plt.ylim(0, 600000)
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Intensity')
     plt.ion()
 
     # Start video feed
-    video = videoROI(1)
+    video = videoROI(1, (minPixelX, pixelY), (maxPixelX, pixelY + height))
     video.start()
+    time.sleep(1)
 
-    # main loop
+    # Main loop
     while True:
-        if video.selected: 
 
-            # Get current frame and iterate through every pixel
-            frame = video.getImage()
+        # Analyze current image
+        frame = video.getImage()
+
+        # Close the program if the video feed is quit/closed
+        if not video.is_alive():
+            plt.close()
+            break
+
+        # Sometimes async errors causes frame to be None
+        if not frame is None:
+
+            # Iterate through every pixel of image with index, the index corresponds to it's approximate corresponding wavelength
             for row in frame:
-                for col in row:
+                for colN, col in enumerate(row):
 
-                    # Pixel return value in (B, G, R, A), Alpha value will not be used and the rest are flipped to get (R, G, B) value
-                    flip = np.flip(col)
+                    # The intensity of the pixel is calculated by the square of the sum of the pixel's 8-bit color value
+                    # The square is simply to eliminate significantly less bright pixels, which are often times just noise 
+                    intensities[wavelengths[colN]] += np.sum(col) * np.sum(col)
 
-                    # If the pixel is very dim or includes lots of light of all colors, ignore it
-                    if all(flip < np.array([50,50,50])) or all(flip > np.array([100,100,100])):
-                        continue
-
-                    # Iterate through every wavelength (R, G, B) value
-                    # Calculate the difference in magnitude between the wavelength and the pixel vector
-                    # The lowest difference value will correspond to the closest matching wavelength of pixel
-                    # Add 1 to the pixel counter corresponding to the wavelength 
-                    prevdiff = (10000000, 0)
-                    for i, wlCol in enumerate(norm_wlRGB):
-                        diff = np.sum(np.square(flip - wlCol[:-1]))     # magnitude of color vector without sqrt() operation.
-                        if diff < prevdiff[0]:
-                            prevdiff = (diff, i)
-                    try:
-                        tally[wavelengths[prevdiff[1]]] += 1
-                    except:
-                        pass
-
-            # Remove extremes. This will mostly contain noise
-            tally[wavelengths[0]] = 0
-            tally[wavelengths[-1]] = 0
-
-            # Graph the data
-            yData = list(tally.values())
+            # If more than one row of pixels are analyzed, average the intensity values. 
+            if height != 1:
+                for k, v in intensities.items():
+                    intensities[k] = v/height
+            
+            # Plot the data
+            yData = list(intensities.values())
             graph.set_ydata(yData)
-            plt.ylim(0, max(yData) + 2)
-            plt.draw()
-            plt.pause(0.01)
-            cv2.waitKey(1)
+            plt.pause(0.1)
 
-            tally = dict.fromkeys(tally, 0)
-        
+            # Reset the intensities between each frame
+            intensities = dict(zip(wavelengths, np.zeros(len(wavelengths), dtype="int")))
