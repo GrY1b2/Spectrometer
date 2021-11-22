@@ -15,6 +15,7 @@ test.py
 
 # User-created content
 *.png
+*.xlsx
 
 # Distribution / packaging
 .Python
